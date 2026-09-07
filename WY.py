@@ -4,10 +4,7 @@ warnings.filterwarnings("ignore")
 import os
 import streamlit as st
 import joblib
-try:
-    import joblib
-except ImportError:
-    from sklearn.externals import joblib
+from sklearn.externals import joblib
 import pandas as pd
 import numpy as np
 import shap
