@@ -3,26 +3,26 @@ warnings.filterwarnings("ignore")
 
 import os
 import streamlit as st
-import joblib
 from sklearn.externals import joblib
 import pandas as pd
 import numpy as np
-import shap
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from io import BytesIO
 from lime.lime_tabular import LimeTabularExplainer
+import shap
 
 # ===================== 全局配置：相对路径 =====================
 plt.rcParams['font.family'] = 'Times New Roman'
 RANDOM_SEED = 666
 np.random.seed(RANDOM_SEED)
 
-# 当前py文件所在目录，适配本地+Streamlit Cloud云端
 WORK_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = WORK_DIR
 os.makedirs(WEB_DIR, exist_ok=True)
 
-# 特征列表，务必和训练模型完全一致
+# 特征列表，务必与模型训练完全一致
 feature_cols = [
     'Cr',
     'AGE',
@@ -44,11 +44,9 @@ def load_model_and_lime_bg():
     model_path = os.path.join(WEB_DIR, "XGBoost_model.pkl")
     model = joblib.load(model_path)
 
-    # ✅这里替换为你的真实LIME背景数据集 val_intersect_lasso_boruta.csv
     lime_bg_path = os.path.join(WEB_DIR, "val_intersect_lasso_boruta.csv")
     lime_bg_df = pd.read_csv(lime_bg_path)
 
-    # CRRT字段转为数值0/1，和模型输入格式对齐
     if "CRRT" in lime_bg_df.columns:
         if pd.api.types.is_object_dtype(lime_bg_df["CRRT"]):
             lime_bg_df["CRRT"] = (
@@ -56,7 +54,7 @@ def load_model_and_lime_bg():
                 .astype(str)
                 .str.strip()
                 .str.lower()
-                .map({"yes":1, "no":0})
+                .map({"yes": 1, "no": 0})
             )
     return model, lime_bg_df
 
@@ -68,7 +66,7 @@ st.title("重症患者结局风险预测模型")
 
 st.markdown("""
 本模型基于XGBoost算法，用于预测重症患者结局发生风险。
-输入特征共10项：Cr、AGE、CRRT、BUN、vein‑Total daily dose、BMI、PLT、CrCL、TP、TBIL。
+输入特征共10项：Cr、AGE、CRRT、vein‑Total daily dose、BUN、BMI、PLT、CrCL、TP、TBIL。
 """)
 st.divider()
 
@@ -121,7 +119,7 @@ if submit_btn:
     st.write(f"结局不发生概率(No): **{prob_neg:.2%}**")
     st.write(f"模型最优阈值：{THRESHOLD}")
 
-    if pred_class ==1:
+    if pred_class == 1:
         st.error("最终判定：**YES**")
         tip = f"患者结局发生风险较高，当前预测概率 {prob_pos:.1%}，建议密切监测，实施个体化干预。"
     else:
@@ -130,12 +128,11 @@ if submit_btn:
     st.info(tip)
 
     st.markdown("---")
-    # SHAP Force Plot
+    # SHAP Force Plot：改用 st.pyplot，去掉BytesIO规避DOM报错
     st.subheader("SHAP Force Plot Explanation")
     shap_explainer = shap.TreeExplainer(model)
     shap_vals = shap_explainer.shap_values(input_df)
-
-    fig, ax = plt.subplots(figsize=(14,4))
+    fig, ax = plt.subplots(figsize=(14, 4))
     shap.force_plot(
         shap_explainer.expected_value,
         shap_vals[0],
@@ -143,20 +140,16 @@ if submit_btn:
         matplotlib=True,
         ax=ax
     )
-    buf = BytesIO()
-    plt.tight_layout()
-    plt.savefig(buf, format="png", bbox_inches="tight", dpi=300)
-    buf.seek(0)
-    st.image(buf, caption="SHAP Force Plot")
+    st.pyplot(fig, dpi=300)
     plt.close(fig)
 
     st.markdown("---")
-    # LIME解释器，使用你的 val_intersect_lasso_boruta.csv作为背景数据
+    # LIME解释器，使用 val_intersect_lasso_boruta.csv作为背景数据
     st.subheader("LIME Explanation")
     lime_explainer = LimeTabularExplainer(
         training_data=lime_bg_data.values,
         feature_names=lime_bg_data.columns.tolist(),
-        class_names=["No Outcome","Outcome"],
+        class_names=["No Outcome", "Outcome"],
         mode="classification",
         random_state=RANDOM_SEED
     )
