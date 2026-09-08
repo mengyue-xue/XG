@@ -10,6 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import shap
 
+# 必须放在最开头
 st.set_page_config(page_title="重症结局风险预测模型", layout="wide")
 
 # ===================== 全局配置 =====================
@@ -56,12 +57,13 @@ st.markdown("""
 """)
 st.divider()
 
-# 页面均分两列：左输入，右结果
-col_left, col_right = st.columns(2)
+# ========== 外层两列：左输入，右输出结果图 ==========
+col_input, col_output = st.columns(2)
 
-with col_left:
+with col_input:
     st.subheader("患者特征输入")
     with st.form("pred_form"):
+        # 内部全部改为纵向单列，不再5列拆分
         Cr = st.number_input("Cr", min_value=0.0, max_value=300.0, value=60.0, step=0.1)
         AGE = st.number_input("AGE", min_value=18, max_value=110, value=60)
         CRRT = st.selectbox("CRRT", options=["No", "Yes"])
@@ -75,7 +77,7 @@ with col_left:
 
         submit_btn = st.form_submit_button("Predict 预测")
 
-with col_right:
+with col_output:
     if submit_btn:
         crrt_val = 1 if CRRT == "Yes" else 0
         input_values = [
@@ -91,14 +93,15 @@ with col_right:
             TBIL
         ]
         input_df = pd.DataFrame([input_values], columns=feature_cols)
-        input_df = input_df.reindex(columns=model.get_booster().feature_names)
 
         pred_proba = model.predict_proba(input_df)[0]
-        prob_yes = pred_proba[0]
-        prob_no  = pred_proba[1]
+        prob_yes = pred_proba[0]   # Yes 达标 (类别0)
+        prob_no  = pred_proba[1]   # No  不达标 (类别1)
 
+        # 阈值逻辑：不达标概率 > THRESHOLD，则判定为不达标NO
         pred_is_no = 1 if prob_no > THRESHOLD else 0
 
+        st.divider()
         st.subheader("📊预测结果")
         st.write(f"**达标(Yes)概率**: {prob_yes:.2%}")
         st.write(f"**不达标(No)概率**: {prob_no:.2%}")
@@ -112,28 +115,18 @@ with col_right:
             tip = f"患者达标可能性高，当前达标概率 {prob_yes:.1%}，仍需常规临床随访观察。"
         st.info(tip)
 
-        # =========修复shap调用，移除output=0参数=========
+        st.markdown("---")
+        st.subheader("SHAP Waterfall Plot‑XGBoost（解释：Yes‑达标）")
         shap_explainer = shap.TreeExplainer(model)
         shap_values = shap_explainer(input_df)
-        # 取类别0（Yes‑达标）的shap值
-        exp0 = shap.Explanation(
+        exp = shap.Explanation(
             values=shap_values.values[:,:,0],
             base_values=shap_values.base_values[:,0],
             data=shap_values.data,
             feature_names=shap_values.feature_names
         )
-
-        base_val = exp0.base_values[0]
-        sum_shap = np.sum(exp0.values[0])
-        f_x = base_val + sum_shap
-
-        st.markdown("**SHAP summary (logit scale):**")
-        st.markdown(f"$E[f(X)]$ (Base value) = {base_val:.4f} · Sum of SHAP values = {sum_shap:.4f} · $f(x)$ = {f_x:.4f}")
-
-        st.markdown("---")
-        st.subheader("SHAP Waterfall Plot‑XGBoost（解释：Yes‑达标）")
         plt.figure(figsize=(12,9))
-        shap.plots.waterfall(exp0[0], max_display=12, show=False)
+        shap.plots.waterfall(exp[0], max_display=12, show=False)
         plt.tight_layout()
         st.pyplot(plt.gcf(), dpi=300)
         plt.close()
