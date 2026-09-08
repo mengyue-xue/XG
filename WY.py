@@ -16,6 +16,7 @@ st.set_page_config(page_title="重症结局风险预测模型", layout="wide")
 
 # ===================== 全局配置 =====================
 plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['axes.unicode_minus'] = False
 RANDOM_SEED = 666
 np.random.seed(RANDOM_SEED)
 
@@ -48,7 +49,7 @@ def load_model():
 model = load_model()
 
 # ===================== 网页正文 =====================
-st.title("重症患者结局风险预测模型")
+st.title("重症结局风险预测模型")
 
 st.markdown("""
 本模型基于XGBoost算法，用于预测重症患者结局发生风险。
@@ -67,10 +68,10 @@ with st.form("pred_form"):
         CRRT = st.selectbox("CRRT", options=["No", "Yes"])
         BUN = st.number_input("BUN", min_value=0.0, max_value=150.0, value=10.0, step=0.1)
     with col3:
-        vein_Total_daily_dose = st.number_input("vein‑Total daily dose", min_value=0.0, max_value=5000.0, value=1000.0, step=1.0)
+        vein_Total_daily_dose = st.number_input("vein‑Total daily dose", min_value=0.0, max_value=5000.0, value=300.0, step=1.0)
         BMI = st.number_input("BMI", min_value=12.0, max_value=50.0, value=24.0, step=0.1)
     with col4:
-        PLT = st.number_input("PLT", min_value=10, max_value=600, value=200)
+        PLT = st.number_input("PLT", min_value=10, max_value=600, value=200, step=1)
         CrCL = st.number_input("CrCL", min_value=0.0, max_value=200.0, value=60.0, step=0.1)
     with col5:
         TP = st.number_input("TP", min_value=30.0, max_value=90.0, value=65.0, step=0.1)
@@ -114,18 +115,15 @@ if submit_btn:
     st.info(tip)
 
     st.markdown("---")
-    st.subheader("SHAP Decision Plot (Single Patient Explanation)")
+    st.subheader("SHAP Waterfall Plot‑XGBoost")
     shap_explainer = shap.TreeExplainer(model)
-    shap_vals = shap_explainer.shap_values(input_df)
-    fig, ax = plt.subplots(figsize=(10,5))
-    shap.decision_plot(
-        shap_explainer.expected_value,
-        shap_vals[0],
-        input_df,
-        show=False
-    )
-    st.pyplot(fig, dpi=300)
-    plt.close(fig)
+    # ⭐关键：获取完整Explanation对象（包含values/base_values/data），不能只取shap_values数组
+    exp = shap_explainer(input_df)
+    plt.figure(figsize=(12,9))
+    shap.plots.waterfall(exp[0], max_display=12, show=False)
+    plt.tight_layout()
+    st.pyplot(plt.gcf(), dpi=300)
+    plt.close()
 
 st.divider()
 st.markdown("""
