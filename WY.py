@@ -10,7 +10,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from io import BytesIO
-from lime.lime_tabular import LimeTabularExplainer
 import shap
 
 # ===================== 全局配置：相对路径 =====================
@@ -38,27 +37,14 @@ feature_cols = [
 
 THRESHOLD = 0.636
 
-# ===================== 加载模型 + LIME背景数据集 val_intersect_lasso_boruta.csv =====================
+# ===================== 加载模型 =====================
 @st.cache_resource
-def load_model_and_lime_bg():
+def load_model():
     model_path = os.path.join(WEB_DIR, "XGBoost_model.pkl")
     model = joblib.load(model_path)
+    return model
 
-    lime_bg_path = os.path.join(WEB_DIR, "val_intersect_lasso_boruta.csv")
-    lime_bg_df = pd.read_csv(lime_bg_path)
-
-    if "CRRT" in lime_bg_df.columns:
-        if pd.api.types.is_object_dtype(lime_bg_df["CRRT"]):
-            lime_bg_df["CRRT"] = (
-                lime_bg_df["CRRT"]
-                .astype(str)
-                .str.strip()
-                .str.lower()
-                .map({"yes": 1, "no": 0})
-            )
-    return model, lime_bg_df
-
-model, lime_bg_data = load_model_and_lime_bg()
+model = load_model()
 
 # ===================== 网页基础设置 =====================
 st.set_page_config(page_title="重症结局风险预测模型", layout="wide")
@@ -128,7 +114,7 @@ if submit_btn:
     st.info(tip)
 
     st.markdown("---")
-    # SHAP Force Plot：改用 st.pyplot，去掉BytesIO规避DOM报错
+    # SHAP Force Plot，st.pyplot渲染规避BytesIO DOM报错
     st.subheader("SHAP Force Plot Explanation")
     shap_explainer = shap.TreeExplainer(model)
     shap_vals = shap_explainer.shap_values(input_df)
@@ -143,24 +129,9 @@ if submit_btn:
     st.pyplot(fig, dpi=300)
     plt.close(fig)
 
-    st.markdown("---")
-    # LIME解释器，使用 val_intersect_lasso_boruta.csv作为背景数据
-    st.subheader("LIME Explanation")
-    lime_explainer = LimeTabularExplainer(
-        training_data=lime_bg_data.values,
-        feature_names=lime_bg_data.columns.tolist(),
-        class_names=["No Outcome", "Outcome"],
-        mode="classification",
-        random_state=RANDOM_SEED
-    )
-    lime_exp = lime_explainer.explain_instance(
-        data_row=input_df.iloc[0].values,
-        predict_fn=model.predict_proba
-    )
-    lime_html = lime_exp.as_html(show_table=False)
-    st.components.v1.html(lime_html, height=800, scrolling=True)
-
 st.divider()
 st.markdown("""
+> **免责说明**：本工具仅为科研模型演示，不能替代临床医师判断。临床决策请结合患者实际病情综合评估。
+""")
 > **免责说明**：本工具仅为科研模型演示，不能替代临床医师判断。临床决策请结合患者实际病情综合评估。
 """)
