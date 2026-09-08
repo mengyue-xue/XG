@@ -9,7 +9,6 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from io import BytesIO
 import shap
 
 # ===================== 全局配置：相对路径 =====================
@@ -52,7 +51,7 @@ st.title("重症患者结局风险预测模型")
 
 st.markdown("""
 本模型基于XGBoost算法，用于预测重症患者结局发生风险。
-输入特征共10项：Cr、AGE、CRRT、vein‑Total daily dose、BUN、BMI、PLT、CrCL、TP、TBIL。
+输入特征共10项：Cr、AGE、CRRT、vein‑Total daily dose、BUN、BMI、PLT、CrCL、TP、TBIL.
 """)
 st.divider()
 
@@ -103,13 +102,13 @@ if submit_btn:
     st.subheader("📊预测结果")
     st.write(f"结局发生概率(Yes): **{prob_pos:.2%}**")
     st.write(f"结局不发生概率(No): **{prob_neg:.2%}**")
-    st.write(f"模型最优阈值：{THRESHOLD}")
+    st.write(f"模型最优阈值: {THRESHOLD}")
 
     if pred_class == 1:
-        st.error("最终判定：**YES**")
+        st.error("最终判定: **YES**")
         tip = f"患者结局发生风险较高，当前预测概率 {prob_pos:.1%}，建议密切监测，实施个体化干预。"
     else:
-        st.success("最终判定：**NO**")
+        st.success("最终判定: **NO**")
         tip = f"患者结局发生风险较低，当前预测概率 {prob_pos:.1%}，仍需常规临床随访观察。"
     st.info(tip)
 
@@ -131,7 +130,5 @@ if submit_btn:
 
 st.divider()
 st.markdown("""
-> **免责说明**：本工具仅为科研模型演示，不能替代临床医师判断。临床决策请结合患者实际病情综合评估。
-""")
-> **免责说明**：本工具仅为科研模型演示，不能替代临床医师判断。临床决策请结合患者实际病情综合评估。
+> **Disclaimer**: This tool is for research demonstration only and does not replace clinical judgment. Clinical decisions should be comprehensively evaluated according to the patient's actual condition.
 """)
