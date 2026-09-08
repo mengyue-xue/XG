@@ -1,5 +1,6 @@
 import warnings
 warnings.filterwarnings("ignore")
+
 import os
 import streamlit as st
 import joblib
@@ -57,79 +58,74 @@ st.markdown("""
 """)
 st.divider()
 
-# ========== 外层两列：左输入，右输出结果图 ==========
-col_input, col_output = st.columns(2)
-
-with col_input:
-    st.subheader("患者特征输入")
-    with st.form("pred_form"):
-        # 内部全部改为纵向单列，不再5列拆分
+# ===================== 输入表单 =====================
+st.subheader("患者特征输入")
+with st.form("pred_form"):
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
         Cr = st.number_input("Cr", min_value=0.0, max_value=300.0, value=60.0, step=0.1)
         AGE = st.number_input("AGE", min_value=18, max_value=110, value=60)
+    with col2:
         CRRT = st.selectbox("CRRT", options=["No", "Yes"])
         BUN = st.number_input("BUN", min_value=0.0, max_value=150.0, value=10.0, step=0.1)
+    with col3:
         vein_Total_daily_dose = st.number_input("vein‑Total daily dose", min_value=0.0, max_value=5000.0, value=300.0, step=1.0)
         BMI = st.number_input("BMI", min_value=12.0, max_value=50.0, value=24.0, step=0.1)
+    with col4:
         PLT = st.number_input("PLT", min_value=10, max_value=600, value=200, step=1)
         CrCL = st.number_input("CrCL", min_value=0.0, max_value=200.0, value=60.0, step=0.1)
+    with col5:
         TP = st.number_input("TP", min_value=30.0, max_value=90.0, value=65.0, step=0.1)
         TBIL = st.number_input("TBIL", min_value=0.0, max_value=200.0, value=12.0, step=0.1)
 
-        submit_btn = st.form_submit_button("Predict 预测")
+    submit_btn = st.form_submit_button("Predict 预测")
 
-with col_output:
-    if submit_btn:
-        crrt_val = 1 if CRRT == "Yes" else 0
-        input_values = [
-            Cr,
-            AGE,
-            crrt_val,
-            BUN,
-            vein_Total_daily_dose,
-            BMI,
-            PLT,
-            CrCL,
-            TP,
-            TBIL
-        ]
-        input_df = pd.DataFrame([input_values], columns=feature_cols)
+if submit_btn:
+    crrt_val = 1 if CRRT == "Yes" else 0
+    input_values = [
+        Cr,
+        AGE,
+        crrt_val,
+        BUN,
+        vein_Total_daily_dose,
+        BMI,
+        PLT,
+        CrCL,
+        TP,
+        TBIL
+    ]
+    input_df = pd.DataFrame([input_values], columns=feature_cols)
 
-        pred_proba = model.predict_proba(input_df)[0]
-        prob_yes = pred_proba[0]   # Yes 达标 (类别0)
-        prob_no  = pred_proba[1]   # No  不达标 (类别1)
+    pred_proba = model.predict_proba(input_df)[0]
+    prob_yes = pred_proba[0]   # Yes 达标 (类别0)
+    prob_no  = pred_proba[1]   # No  不达标 (类别1)
 
-        # 阈值逻辑：不达标概率 > THRESHOLD，则判定为不达标NO
-        pred_is_no = 1 if prob_no > THRESHOLD else 0
+    # 阈值逻辑：不达标概率 > THRESHOLD，则判定为不达标NO
+    pred_is_no = 1 if prob_no > THRESHOLD else 0
 
-        st.divider()
-        st.subheader("📊预测结果")
-        st.write(f"**达标(Yes)概率**: {prob_yes:.2%}")
-        st.write(f"**不达标(No)概率**: {prob_no:.2%}")
-        st.write(f"模型最优阈值: {THRESHOLD}")
+    st.divider()
+    st.subheader("📊预测结果")
+    st.write(f"**达标(Yes)概率**: {prob_yes:.2%}")
+    st.write(f"**不达标(No)概率**: {prob_no:.2%}")
+    st.write(f"模型最优阈值: {THRESHOLD}")
 
-        if pred_is_no == 1:
-            st.error("最终判定: **NO（不达标）**")
-            tip = f"患者不达标风险较高，当前不达标概率 {prob_no:.1%}，建议密切监测，实施个体化干预。"
-        else:
-            st.success("最终判定: **YES（达标）**")
-            tip = f"患者达标可能性高，当前达标概率 {prob_yes:.1%}，仍需常规临床随访观察。"
-        st.info(tip)
+    if pred_is_no == 1:
+        st.error("最终判定: **NO（不达标）**")
+        tip = f"患者不达标风险较高，当前不达标概率 {prob_no:.1%}，建议密切监测，实施个体化干预。"
+    else:
+        st.success("最终判定: **YES（达标）**")
+        tip = f"患者达标可能性高，当前达标概率 {prob_yes:.1%}，仍需常规临床随访观察。"
+    st.info(tip)
 
-        st.markdown("---")
-        st.subheader("SHAP Waterfall Plot‑XGBoost（解释：Yes‑达标）")
-        shap_explainer = shap.TreeExplainer(model)
-        shap_values = shap_explainer(input_df)
-        exp = shap.Explanation(
-            values=shap_values.values[:,:,0],
-            base_values=shap_values.base_values[:,0],
-            data=shap_values.data,
-            feature_names=shap_values.feature_names
-        )
-        plt.figure(figsize=(12,9))
-        shap.plots.waterfall(exp[0], max_display=12, show=False)
-        plt.tight_layout()
-        st.pyplot(plt.gcf(), dpi=300)
-        plt.close()
+    st.markdown("---")
+    st.subheader("SHAP Waterfall Plot‑XGBoost（解释：Yes‑达标）")
+    shap_explainer = shap.TreeExplainer(model)
+    exp = shap_explainer(input_df, output=0)  # output=0：解释类别0 Yes（达标）
+    plt.figure(figsize=(12,9))
+    shap.plots.waterfall(exp[0], max_display=12, show=False)
+    plt.tight_layout()
+    st.pyplot(plt.gcf(), dpi=300)
+    plt.close()
 
 st.divider()
 st.markdown("""
