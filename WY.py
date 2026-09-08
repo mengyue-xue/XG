@@ -3,7 +3,7 @@ warnings.filterwarnings("ignore")
 
 import os
 import streamlit as st
-from sklearn.externals import joblib
+import joblib
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -51,7 +51,7 @@ st.title("重症患者结局风险预测模型")
 
 st.markdown("""
 本模型基于XGBoost算法，用于预测重症患者结局发生风险。
-输入特征共10项：Cr、AGE、CRRT、vein‑Total daily dose、BUN、BMI、PLT、CrCL、TP、TBIL.
+输入特征共10项: Cr、AGE、CRRT、vein‑Total daily dose、BUN、BMI、PLT、CrCL、TP、TBIL.
 """)
 st.divider()
 
@@ -113,7 +113,7 @@ if submit_btn:
     st.info(tip)
 
     st.markdown("---")
-    # SHAP Force Plot，st.pyplot渲染规避BytesIO DOM报错
+    # SHAP Force Plot
     st.subheader("SHAP Force Plot Explanation")
     shap_explainer = shap.TreeExplainer(model)
     shap_vals = shap_explainer.shap_values(input_df)
