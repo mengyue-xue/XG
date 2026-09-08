@@ -11,7 +11,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import shap
 
-# ===================== 全局配置：相对路径 =====================
+# ========== 【强制】st.set_page_config 必须放在所有streamlit操作最开头，import之后第一处st调用 ==========
+st.set_page_config(page_title="重症结局风险预测模型", layout="wide")
+
+# ===================== 全局配置 =====================
 plt.rcParams['font.family'] = 'Times New Roman'
 RANDOM_SEED = 666
 np.random.seed(RANDOM_SEED)
@@ -20,7 +23,6 @@ WORK_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = WORK_DIR
 os.makedirs(WEB_DIR, exist_ok=True)
 
-# 特征列表，务必与模型训练完全一致
 feature_cols = [
     'Cr',
     'AGE',
@@ -45,8 +47,7 @@ def load_model():
 
 model = load_model()
 
-# ===================== 网页基础设置 =====================
-st.set_page_config(page_title="重症结局风险预测模型", layout="wide")
+# ===================== 网页正文 =====================
 st.title("重症患者结局风险预测模型")
 
 st.markdown("""
@@ -113,7 +114,6 @@ if submit_btn:
     st.info(tip)
 
     st.markdown("---")
-    # SHAP Force Plot
     st.subheader("SHAP Force Plot Explanation")
     shap_explainer = shap.TreeExplainer(model)
     shap_vals = shap_explainer.shap_values(input_df)
