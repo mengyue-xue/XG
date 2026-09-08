@@ -11,7 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import shap
 
-# ========== 【强制】st.set_page_config 必须放在所有streamlit操作最开头，import之后第一处st调用 ==========
+# st.set_page_config 必须放在所有streamlit调用最前面
 st.set_page_config(page_title="重症结局风险预测模型", layout="wide")
 
 # ===================== 全局配置 =====================
@@ -114,16 +114,15 @@ if submit_btn:
     st.info(tip)
 
     st.markdown("---")
-    st.subheader("SHAP Force Plot Explanation")
+    st.subheader("SHAP Decision Plot (Single Patient Explanation)")
     shap_explainer = shap.TreeExplainer(model)
     shap_vals = shap_explainer.shap_values(input_df)
-    fig, ax = plt.subplots(figsize=(14, 4))
-    shap.force_plot(
+    fig, ax = plt.subplots(figsize=(10,5))
+    shap.decision_plot(
         shap_explainer.expected_value,
         shap_vals[0],
         input_df,
-        matplotlib=True,
-        ax=ax
+        show=False
     )
     st.pyplot(fig, dpi=300)
     plt.close(fig)
