@@ -22,12 +22,13 @@ WORK_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = WORK_DIR
 os.makedirs(WEB_DIR, exist_ok=True)
 
+# =========【关键！此处必须和训练XGBoost时feature_names完全一模一样，复制你训练时的特征列表】=========
 feature_cols = [
     'Cr',
     'AGE',
     'CRRT',
     'BUN',
-    'vein‑Total daily dose',
+    'vein-Total daily dose',
     'BMI',
     'PLT',
     'CrCL',
@@ -54,7 +55,7 @@ with col_left:
         AGE = st.number_input("AGE", min_value=18, max_value=110, value=60)
         CRRT = st.selectbox("CRRT", options=["No", "Yes"])
         BUN = st.number_input("BUN", min_value=0.0, max_value=150.0, value=10.0, step=0.1)
-        vein_Total_daily_dose = st.number_input("vein‑Total daily dose", min_value=0.0, max_value=5000.0, value=300.0, step=1.0)
+        vein_Total_daily_dose = st.number_input("vein-Total daily dose", min_value=0.0, max_value=5000.0, value=300.0, step=1.0)
         BMI = st.number_input("BMI", min_value=12.0, max_value=50.0, value=24.0, step=0.1)
         PLT = st.number_input("PLT", min_value=10, max_value=600, value=200, step=1)
         CrCL = st.number_input("CrCL", min_value=0.0, max_value=200.0, value=60.0, step=0.1)
@@ -81,7 +82,8 @@ with col_right:
             TP,
             TBIL
         ]
-        input_df = pd.DataFrame([input_values], columns=feature_cols)
+        # 构建DataFrame，强制对齐模型特征顺序
+        input_df = pd.DataFrame([input_values], columns=feature_cols).reindex(columns=model.get_booster().feature_names)
 
         pred_proba = model.predict_proba(input_df)[0]
         prob_yes = pred_proba[0]  # Yes = Compliant
