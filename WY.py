@@ -118,18 +118,69 @@ if submit_btn:
     st.info(tip)
 
     st.markdown("---")
-    st.subheader("SHAP Waterfall Plot‑XGBoost（解释：Yes‑达标）")
-    shap_explainer = shap.TreeExplainer(model)
-    exp = shap_explainer(input_df, output=0)  # output=0：解释类别0 Yes（达标）
-    plt.figure(figsize=(12,9))
-    shap.plots.waterfall(exp[0], max_display=12, show=False)
-    plt.tight_layout()
-    st.pyplot(plt.gcf(), dpi=300)
-    plt.close()
+    st.subheader("SHAP Waterfall Plot - XGBoost（解释：Yes-达标）")
+    
+    # ========== 修复后的SHAP代码 ==========
+    try:
+        # 方法1：使用传统API（最稳定）
+        shap_explainer = shap.TreeExplainer(model)
+        shap_values = shap_explainer.shap_values(input_df)
+        
+        # 处理二分类的SHAP值
+        if isinstance(shap_values, list):
+            # 取类别0（Yes/达标）的SHAP值
+            shap_values_yes = shap_values[0]
+            expected_value = shap_explainer.expected_value[0]
+        else:
+            shap_values_yes = shap_values
+            expected_value = shap_explainer.expected_value
+        
+        # 创建Explanation对象用于waterfall plot
+        explanation = shap.Explanation(
+            values=shap_values_yes[0],
+            base_values=expected_value,
+            data=input_df.values[0],
+            feature_names=feature_cols
+        )
+        
+        # 绘制waterfall图
+        fig, ax = plt.subplots(figsize=(12, 8))
+        shap.waterfall_plot(explanation, max_display=12, show=False)
+        plt.tight_layout()
+        st.pyplot(fig, dpi=300)
+        plt.close(fig)
+        
+    except Exception as e:
+        # 方法2：如果方法1失败，使用备选方案
+        st.warning(f"使用备选SHAP方法: {str(e)}")
+        try:
+            shap_explainer = shap.TreeExplainer(model)
+            shap_values = shap_explainer.shap_values(input_df)
+            
+            if isinstance(shap_values, list):
+                shap_values_yes = shap_values[0]
+            else:
+                shap_values_yes = shap_values
+            
+            # 使用force plot作为备选
+            fig = plt.figure(figsize=(14, 4))
+            shap.force_plot(
+                shap_explainer.expected_value[0] if isinstance(shap_explainer.expected_value, list) else shap_explainer.expected_value,
+                shap_values_yes,
+                input_df,
+                matplotlib=True,
+                show=False
+            )
+            st.pyplot(fig, dpi=300)
+            plt.close(fig)
+            
+        except Exception as e2:
+            st.error(f"SHAP绘图失败: {str(e2)}")
+            st.info("请尝试: pip install shap==0.41.0")
 
 st.divider()
 st.markdown("""
-> **说明**: SHAP瀑布图用于解释【Yes‑达标】；红色条代表该特征**提升达标概率**，蓝色条代表该特征**降低达标概率**。E[f(X)]为模型基线期望输出，f(x)为该患者样本最终模型输出。
+> **说明**: SHAP瀑布图用于解释【Yes-达标】；红色条代表该特征**提升达标概率**，蓝色条代表该特征**降低达标概率**。E[f(X)]为模型基线期望输出，f(x)为该患者样本最终模型输出。
 >
 > **Disclaimer**: This tool is for research demonstration only and does not replace clinical judgment. Clinical decisions should be comprehensively evaluated according to the patient's actual condition.
 """)
